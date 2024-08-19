@@ -19,9 +19,8 @@ pub const Ray = struct {
         };
     }
 
-    pub fn at(self: Self, t: E) P3.V {
-        const t_vec: Vec3.V = @splat(t);
-        return self.orig.vec + t_vec * self.dir.vec;
+    pub fn at(self: Self, t: E) Vec3 {
+        return self.orig.add(self.dir.mulScalar(t));
     }
 
     test at {

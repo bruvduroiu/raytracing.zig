@@ -20,6 +20,16 @@ pub fn Vector3(comptime E: type) type {
             };
         }
 
+        pub fn fromArray(xyz: [3]E) Self {
+            return .{
+                .vec = V{ xyz[0], xyz[1], xyz[2] },
+            };
+        }
+
+        pub fn to(self: Self, destination: Self) Vec3 {
+            return destination.sub(self);
+        }
+
         pub inline fn x(self: Self) E {
             return self.vec[0];
         }
