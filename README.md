@@ -4,3 +4,5 @@ Following [Shirley, Black & Hollasch's](https://raytracing.github.io/books/RayTr
 
 
 ...but in zig.
+
+![Raytraced sphere](assets/img.png)

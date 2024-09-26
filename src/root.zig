@@ -4,8 +4,6 @@ const testing = std.testing;
 
 pub const E = f64;
 
-pub const Images = @import("images.zig");
-
 pub const Vectors = @import("vectors.zig");
 pub const Vec3 = Vectors.Vec3;
 pub const P3 = Vectors.P3;
