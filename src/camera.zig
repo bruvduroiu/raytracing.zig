@@ -1,6 +1,7 @@
 const std = @import("std");
 const print = std.debug.print;
 const testing = std.testing;
+const Random = std.rand.Random;
 
 const root = @import("root.zig");
 const E = root.E;
@@ -20,12 +21,14 @@ camera_center: P3,
 pixel00_loc: P3,
 pixel_delta_u: Vec3,
 pixel_delta_v: Vec3,
+samples_per_pixel: E,
 
 pub const Config = struct {
     aspect_ratio: E = 1.0,
     width: usize = 400,
     focal_length: E = 1.0,
     viewport_height: E = 2.0,
+    samples_per_pixel: E = 10.0,
 };
 
 pub fn init(config: Config) Self {
@@ -47,6 +50,7 @@ pub fn init(config: Config) Self {
 
     const viewport_upper_left = camera_center.sub(Vec3.init(0, 0, focal_length)).sub(viewport_u.divScalar(2)).sub(viewport_v.divScalar(2));
     const pixel00_loc = viewport_upper_left.add(pixel_delta_u.add(pixel_delta_v).mulScalar(0.5));
+
     return .{
         .width = config.width,
         .height = height,
@@ -54,7 +58,29 @@ pub fn init(config: Config) Self {
         .pixel_delta_u = pixel_delta_u,
         .pixel_delta_v = pixel_delta_v,
         .camera_center = camera_center,
+        .samples_per_pixel = config.samples_per_pixel,
     };
+}
+
+pub fn getRay(comptime self: Self, i: E, j: E) Ray {
+    const offset = sampleSquare() catch Vec3.init(0.0, 0.0, 0.0);
+    const pixelSample = self.pixel00_loc.add(self.pixel_delta_u.mulScalar(offset.x() + i)).add(self.pixel_delta_v.mulScalar(offset.y() + j));
+
+    const rayOrigin = self.camera_center;
+    const rayDirection = pixelSample.sub(rayOrigin);
+
+    return Ray.init(rayOrigin.vec, rayDirection.vec);
+}
+
+fn sampleSquare() !Vec3 {
+    var prng = std.rand.DefaultPrng.init(blk: {
+        var seed: u64 = undefined;
+        try std.posix.getrandom(std.mem.asBytes(&seed));
+        break :blk seed;
+    });
+    const rand = prng.random();
+
+    return Vec3.init(rand.float(E) - 0.5, rand.float(E) - 0.5, 0);
 }
 
 pub fn render(comptime self: Self, world: *const HittableList, writer: anytype, log: bool) !void {
@@ -66,12 +92,13 @@ pub fn render(comptime self: Self, world: *const HittableList, writer: anytype, 
         for (0..self.width) |i| {
             const i_f: f64 = @floatFromInt(i);
             const j_f: f64 = @floatFromInt(j);
-            const pixel_center = self.pixel00_loc.add(self.pixel_delta_u.mulScalar(i_f)).add(self.pixel_delta_v.mulScalar(j_f));
-            const ray_direction = pixel_center.sub(self.camera_center);
-            const r = Ray.init(self.camera_center.vec, ray_direction.vec);
-            const color = rayColor(&r, world);
+            var color = Color.init(0, 0, 0);
+            for (0..self.samples_per_pixel) |_| {
+                const r = self.getRay(i_f, j_f);
+                color = color.add(rayColor(&r, world));
+            }
 
-            try Colors.writeColor(writer, color);
+            try Colors.writeColor(writer, color.mulScalar(1.0 / self.samples_per_pixel));
             try writer.writeAll(if (i + 1 < self.width) "\t" else "\n");
         }
     }

@@ -3,6 +3,7 @@ const testing = std.testing;
 
 const root = @import("root.zig");
 const Vec3 = root.Vectors.Vec3;
+const Interval = root.Interval;
 
 pub const Color = Vec3;
 
@@ -11,9 +12,10 @@ pub fn writeColor(writer: anytype, color: Color) !void {
     const g = color.y();
     const b = color.z();
 
-    const rbyte: u8 = @intFromFloat(255.999 * r);
-    const gbyte: u8 = @intFromFloat(255.999 * g);
-    const bbyte: u8 = @intFromFloat(255.999 * b);
+    const intensity = Interval.init(0.000, 0.999);
+    const rbyte: u8 = @intFromFloat(255.999 * intensity.clamp(r));
+    const gbyte: u8 = @intFromFloat(255.999 * intensity.clamp(g));
+    const bbyte: u8 = @intFromFloat(255.999 * intensity.clamp(b));
 
     try writer.print("{d: >3} {d: >3} {d: >3}", .{ rbyte, gbyte, bbyte });
 }
