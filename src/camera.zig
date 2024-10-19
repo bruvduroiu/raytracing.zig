@@ -62,8 +62,7 @@ pub fn init(config: Config) Self {
     };
 }
 
-pub fn getRay(comptime self: Self, i: E, j: E) Ray {
-    const offset = sampleSquare() catch Vec3.init(0.0, 0.0, 0.0);
+pub fn getRay(comptime self: Self, i: E, j: E, offset: Vec3) Ray {
     const pixelSample = self.pixel00_loc.add(self.pixel_delta_u.mulScalar(offset.x() + i)).add(self.pixel_delta_v.mulScalar(offset.y() + j));
 
     const rayOrigin = self.camera_center;
@@ -72,18 +71,11 @@ pub fn getRay(comptime self: Self, i: E, j: E) Ray {
     return Ray.init(rayOrigin.vec, rayDirection.vec);
 }
 
-fn sampleSquare() !Vec3 {
-    var prng = std.rand.DefaultPrng.init(blk: {
-        var seed: u64 = undefined;
-        try std.posix.getrandom(std.mem.asBytes(&seed));
-        break :blk seed;
-    });
-    const rand = prng.random();
-
-    return Vec3.init(rand.float(E) - 0.5, rand.float(E) - 0.5, 0);
+fn sampleSquare(r: *const Random) Vec3 {
+    return Vec3.random(r, -0.5, 0.5);
 }
 
-pub fn render(comptime self: Self, world: *const HittableList, writer: anytype, log: bool) !void {
+pub fn render(comptime self: Self, world: *const HittableList, rand: *const Random, writer: anytype, log: bool) !void {
     const max_color = 255;
     try writer.print("P3\n{d} {d}\n{d}\n", .{ self.width, self.height, max_color });
 
@@ -94,8 +86,9 @@ pub fn render(comptime self: Self, world: *const HittableList, writer: anytype, 
             const j_f: f64 = @floatFromInt(j);
             var color = Color.init(0, 0, 0);
             for (0..self.samples_per_pixel) |_| {
-                const r = self.getRay(i_f, j_f);
-                color = color.add(rayColor(&r, world));
+                const rOffset = sampleSquare(rand);
+                const r = self.getRay(i_f, j_f, rOffset);
+                color = color.add(rayColor(&r, world, rand));
             }
 
             try Colors.writeColor(writer, color.mulScalar(1.0 / self.samples_per_pixel));
@@ -105,9 +98,11 @@ pub fn render(comptime self: Self, world: *const HittableList, writer: anytype, 
     if (log) print("\r{s: <26}\n", .{"Done!"});
 }
 
-fn rayColor(r: *const Ray, world: *const HittableList) Color {
+fn rayColor(r: *const Ray, world: *const HittableList, rand: *const Random) Color {
     if (world.hit(Interval.init(0.001, root.inf), r)) |c| {
-        return c.normal.add(Color.init(1, 1, 1)).mulScalar(0.5);
+        const dir = Vec3.randomUnitVector(rand);
+        const ray = Ray.init(c.p.vec, dir.vec);
+        return rayColor(&ray, world, rand).mulScalar(0.5);
     }
 
     const unit_direction: Vec3 = r.dir.normed();

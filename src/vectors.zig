@@ -1,5 +1,6 @@
 const std = @import("std");
 const testing = std.testing;
+const Random = std.rand.Random;
 
 const root = @import("root.zig");
 
@@ -97,6 +98,33 @@ pub fn Vector3(comptime E: type) type {
                 uv[2] * vv[0] - uv[0] * vv[2],
                 uv[0] * vv[1] - uv[1] * vv[0],
             } };
+        }
+
+        pub fn makeUnitVector(self: Self) Self {
+            const inv_n = 1.0 / self.length();
+            return Self{
+                .x = self.x() * inv_n,
+                .y = self.y() * inv_n,
+                .z = self.z() * inv_n,
+            };
+        }
+
+        pub fn randomUnitVector(r: *const Random) Self {
+            return while (true) {
+                const p = Self.init(r.float(E), r.float(E), r.float(E));
+                const lensq = p.lengthSquared();
+                if (lensq < 1.0) {
+                    break p.divScalar(lensq);
+                }
+            } else Vec3.init(0, 0, 0);
+        }
+
+        pub fn random(r: *const Random, min: E, max: E) Self {
+            return Self.init(root.boundedRandom(r, min, max), root.boundedRandom(r, min, max), root.boundedRandom(r, min, max));
+        }
+
+        pub fn normalRandom(r: *const Random) Self {
+            return Self.init(root.boundedRandom(r, 0.0, 1.0), root.boundedRandom(r, 0.0, 1.0), root.boundedRandom(r, 0.0, 1.0));
         }
 
         test x {

@@ -1,6 +1,7 @@
 const std = @import("std");
 const print = std.debug.print;
 const testing = std.testing;
+const Random = std.rand.Random;
 
 pub const E = f64;
 
@@ -29,6 +30,10 @@ pub const pi: E = std.math.pi;
 
 pub inline fn degToRad(degrees: E) E {
     return degrees * pi / 180.0;
+}
+
+pub fn boundedRandom(r: *const Random, min: E, max: E) E {
+    return min + (max - min) * r.float(E);
 }
 
 test {
